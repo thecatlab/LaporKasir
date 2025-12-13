@@ -321,16 +321,14 @@
         }
 
         function shareToWhatsApp() {
-            // 1. Copy text as fallback
+            // 1. Copy text silently as a convenience backup
             const reportText = getReportText();
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(reportText).catch(err => console.log('Clipboard fail', err));
             }
 
-            // 2. Check basic support first
             if (!navigator.share) {
-                showToast('Fitur share tidak didukung. Membuka WhatsApp Text...');
-                setTimeout(() => { window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank'); }, 1000);
+                showToast('Browser ini tidak mendukung fitur Share bawaan.');
                 return;
             }
 
@@ -347,29 +345,25 @@
                     const file = new File([blob], filename, { type: 'image/png' });
                     const shareData = { files: [file], text: reportText };
 
-                    // 3. Try Sharing
+                    // 2. Execute Native Share
                     if (navigator.canShare && navigator.canShare(shareData)) {
                         navigator.share(shareData)
-                            .then(() => showToast('Berhasil dibagikan!'))
+                            .then(() => showToast('Berhasil membuka menu share!'))
                             .catch((error) => {
                                 console.error('Share failed:', error);
-                                // Robust Fallback for iOS/Desktop cancellations or errors
+                                // No fallback to wa.me, just log/toast error if not aborted
                                 if (error.name !== 'AbortError') {
-                                    showToast('Gagal share gambar. Mengalihkan ke teks...');
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+                                    showToast('Gagal membagikan gambar.');
                                 }
                             });
                     } else {
-                        // Fallback if files not supported
-                        showToast('Browser menolak file. Mengirim teks saja...');
-                        window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+                        showToast('Perangkat menolak pembagian file gambar ini.');
                     }
                 }, 'image/png');
             }).catch(err => {
                 console.error(err);
+                showToast('Gagal memproses gambar');
                 if (document.body.contains(clone)) document.body.removeChild(clone);
-                showToast('Gagal render. Mengirim teks saja...');
-                window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
             });
         }
 
