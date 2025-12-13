@@ -303,7 +303,9 @@
             if (vals.discrepancy === 0) statusStr = 'SUDAH SESUAI';
             else if (vals.discrepancy > 0) statusStr = 'SURPLUS (LEBIH)';
             else statusStr = 'DEFISIT (KURANG)';
-            return `*Laporan Rekonsiliasi SKMK*\nTanggal: ${dateStr}\n\nKas Awal: ${formatter.format(vals.startTotal)}\nKas Akhir: ${formatter.format(vals.endTotal)}\nSelisih Kas: ${formatter.format(vals.netCashFlow)}\nTotal Pengeluaran: ${formatter.format(vals.expensesTotal)}\n\n*Pendapatan Cash: ${formatter.format(vals.cashIncome)}*\nPendapatan QRIS: ${formatter.format(vals.qris)}\n*Total Pendapatan: ${formatter.format(vals.totalIncome)}*\nTotal App Qasir: ${formatter.format(vals.qasir)}\n------------------\n*SELISIH AKHIR: ${formatter.format(vals.discrepancy)}*\n(${statusStr})\n\nKeterangan:\n${shiftData.notes || '-'}${expenseDetails}`;
+            
+            // REVISION: Updated text format to match user request
+            return `*Laporan Rekonsiliasi SKMK*\nTanggal: ${dateStr}\n\nKas Awal: ${formatter.format(vals.startTotal)}\nKas Akhir: ${formatter.format(vals.endTotal)}\nSelisih Kas: ${formatter.format(vals.netCashFlow)}\nTotal Pengeluaran: ${formatter.format(vals.expensesTotal)}\n\nPendapatan Cash: ${formatter.format(vals.cashIncome)}\nPendapatan QRIS: ${formatter.format(vals.qris)}\n\n*Total Pendapatan: ${formatter.format(vals.totalIncome)}*\n*Total App Qasir: ${formatter.format(vals.qasir)}*\n------------------\n*SELISIH AKHIR: ${formatter.format(vals.discrepancy)}*\n(${statusStr})\n\nKeterangan:\n${shiftData.notes || '-'}${expenseDetails}`;
         }
 
         function captureScreenshot() {
@@ -321,17 +323,44 @@
         }
 
         function shareToWhatsApp() {
-            showToast('Memproses gambar dan teks...');
+            // 1. Copy text to clipboard first as fallback
+            const reportText = getReportText();
+            // Use doCopy logic but without triggering toast immediately
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(reportText).catch(err => console.log('Clipboard fail', err));
+            } else {
+                // Fallback copy using text area (invisible)
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = reportText;
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                } catch(e) {}
+            }
+
+            showToast('Memproses gambar...');
             const clone = prepareScreenshotClone();
             document.body.appendChild(clone);
+            
             html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true }).then(canvas => {
                 canvas.toBlob(blob => {
                     const filename = getScreenshotFilename();
                     const file = new File([blob], filename, { type: 'image/png' });
-                    const reportText = getReportText();
+                    
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        navigator.share({ files: [file], text: reportText }).then(() => showToast('Berhasil dibagikan!')).catch((error) => console.log('Sharing failed', error));
-                    } else { showToast('Browser tidak mendukung fitur bagi gambar. Gunakan Simpan ke Galeri.'); }
+                        // Attempt to share both file and text
+                        navigator.share({
+                            files: [file],
+                            text: reportText
+                        })
+                        .then(() => showToast('Jika teks tidak muncul, Silakan Tempel/Paste (sudah disalin).'))
+                        .catch((error) => console.log('Sharing failed', error));
+                    } else { 
+                        showToast('Browser tidak mendukung share gambar. Gunakan Simpan ke Galeri.'); 
+                    }
                     if (document.body.contains(clone)) document.body.removeChild(clone);
                 });
             }).catch(err => { console.error(err); showToast('Gagal memproses gambar'); if (document.body.contains(clone)) document.body.removeChild(clone); });
