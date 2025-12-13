@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Penghitung Kas SKMK</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- html2canvas for screenshot functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            /* Prevent scrolling issues on iOS */
+            overscroll-behavior-y: none; 
+        }
+        
+        /* Remove spinners from number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] { -moz-appearance: textfield; }
+        
+        /* Custom Date Input Styling */
+        input[type="date"] {
+            display: block;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+        }
+        
+        /* Safe area padding for iPhones with notch */
+        .safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+        
+        /* Tab Styles */
+        .tab-active { background-color: white; color: #0f172a; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); font-weight: 600; }
+        .tab-inactive { color: #64748b; font-weight: 500; }
+        .tab-inactive:hover { color: #334155; }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800 min-h-screen pb-40">
+
+    <!-- App Container (Centers the app on PC/Tablet) -->
+    <div class="max-w-md mx-auto bg-gray-50 min-h-screen shadow-2xl relative">
+
+        <!-- Header Section -->
+        <div class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+            <!-- Top Bar -->
+            <div class="px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="p-2 bg-emerald-100 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                    </div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-900">Penghitung Kas SKMK</h1>
+                </div>
+                <button onclick="confirmReset()" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Reset All">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="px-2 pb-3">
+                <div class="flex p-1 bg-gray-100 rounded-xl space-x-1">
+                    <button onclick="switchTab('start')" id="tab-start" class="flex-1 py-2 text-[11px] sm:text-xs font-medium rounded-lg transition-all duration-200 tab-active">
+                        Awal
+                    </button>
+                    <button onclick="switchTab('end')" id="tab-end" class="flex-1 py-2 text-[11px] sm:text-xs font-medium rounded-lg transition-all duration-200 tab-inactive">
+                        Akhir
+                    </button>
+                    <button onclick="switchTab('expenses')" id="tab-expenses" class="flex-1 py-2 text-[11px] sm:text-xs font-medium rounded-lg transition-all duration-200 tab-inactive">
+                        Pengeluaran
+                    </button>
+                    <button onclick="switchTab('report')" id="tab-report" class="flex-1 py-2 text-[11px] sm:text-xs font-medium rounded-lg transition-all duration-200 tab-inactive">
+                        Laporan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="px-4 py-6 space-y-3">
+            <!-- JS will inject Input Lists, Expenses, or Summary Report here -->
+        </main>
+
+        <!-- Sticky Footer Total -->
+        <div id="footer-summary" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 safe-area-pb z-20">
+            <div class="flex justify-between items-end mb-1">
+                <span id="footer-label" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Awal</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <div id="footer-total" class="text-3xl font-bold text-slate-900 tracking-tight">Rp 0</div>
+                <button id="copy-btn" onclick="copyCurrentTotal()" class="hidden text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">
+                    Copy
+                </button>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal (Custom Popup) -->
+        <div id="confirm-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-200 opacity-0 pointer-events-none" style="transition: opacity 0.2s ease-out;">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-95 transition-transform duration-200" id="confirm-modal-content">
+                <h3 class="font-bold text-lg mb-2 text-slate-900" id="modal-title">Konfirmasi</h3>
+                <p class="text-gray-600 mb-6 text-sm" id="modal-message">Apakah anda yakin?</p>
+                <div class="flex space-x-3">
+                    <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors">Batal</button>
+                    <button id="confirm-yes-btn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-md shadow-red-200 transition-colors">Ya, Hapus</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 z-50 text-sm font-medium text-center min-w-[200px]">
+            Disalin ke clipboard!
+        </div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const denominations = [
+            { value: 100000, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+            { value: 50000, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+            { value: 20000, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
+            { value: 10000, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+            { value: 5000, color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200' },
+            { value: 2000, color: 'text-gray-600', bg: 'bg-gray-100', border: 'border-gray-300' },
+            { value: 1000, color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' },
+            { value: 500, color: 'text-stone-500', bg: 'bg-stone-50', border: 'border-stone-200' },
+        ];
+
+        // --- State Management ---
+        let currentMode = 'start'; // 'start', 'end', 'expenses', 'report'
+        let shiftData = {
+            start: {},
+            end: {},
+            expenses: [], // Array of { id, name, qty, unit, amount }
+            qris: '',
+            qasir: '',
+            notes: '',
+            reportDate: new Date().toISOString().split('T')[0] // YYYY-MM-DD
+        };
+
+        // Modal State
+        let pendingAction = null; 
+
+        // Initialize empty data structure
+        denominations.forEach(d => {
+            shiftData.start[d.value] = '';
+            shiftData.end[d.value] = '';
+        });
+
+        // Load from LocalStorage
+        const savedData = localStorage.getItem('skmk_kas_data_v2');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                if (parsed.start) shiftData.start = { ...shiftData.start, ...parsed.start };
+                if (parsed.end) shiftData.end = { ...shiftData.end, ...parsed.end };
+                if (Array.isArray(parsed.expenses)) shiftData.expenses = parsed.expenses;
+                shiftData.qris = parsed.qris !== undefined ? parsed.qris : '';
+                shiftData.qasir = parsed.qasir !== undefined ? parsed.qasir : '';
+                shiftData.notes = parsed.notes !== undefined ? parsed.notes : '';
+                if (parsed.reportDate) shiftData.reportDate = parsed.reportDate;
+            } catch (e) { console.error("Error loading save", e); }
+        }
+
+        // --- Elements ---
+        const mainContent = document.getElementById('main-content');
+        const footerLabel = document.getElementById('footer-label');
+        const footerTotal = document.getElementById('footer-total');
+        const copyBtn = document.getElementById('copy-btn');
+        const footerContainer = document.getElementById('footer-summary');
+
+        // --- Formatter ---
+        const formatter = new Intl.NumberFormat('id-ID', {
+            style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0
+        });
+
+        const numberFormatter = new Intl.NumberFormat('id-ID');
+
+        // --- Core Logic ---
+
+        function switchTab(mode) {
+            currentMode = mode;
+            ['start', 'end', 'expenses', 'report'].forEach(m => {
+                const btn = document.getElementById(`tab-${m}`);
+                if (m === mode) {
+                    btn.classList.remove('tab-inactive');
+                    btn.classList.add('tab-active');
+                } else {
+                    btn.classList.add('tab-inactive');
+                    btn.classList.remove('tab-active');
+                }
+            });
+            renderContent();
+            updateFooter();
+        }
+
+        function saveData() {
+            localStorage.setItem('skmk_kas_data_v2', JSON.stringify(shiftData));
+        }
+
+        function updateCount(value, qtyStr) {
+            const counts = shiftData[currentMode];
+            if (qtyStr === '') {
+                counts[value] = '';
+            } else {
+                const num = parseInt(qtyStr);
+                if (!isNaN(num) && num >= 0) {
+                    counts[value] = num;
+                }
+            }
+            saveData();
+            updateFooter();
+            updateRowVisuals(value);
+        }
+
+        function addExpense() {
+            const nameEl = document.getElementById('expense-name');
+            const qtyEl = document.getElementById('expense-qty');
+            const unitEl = document.getElementById('expense-unit');
+            const priceEl = document.getElementById('expense-price');
+            
+            const name = nameEl.value.trim();
+            const rawQty = qtyEl.value.replace(',', '.');
+            const qty = rawQty ? parseFloat(rawQty) : ''; 
+            const unit = unitEl.value.trim();
+            const price = parseInt(priceEl.value);
+
+            if (!name || isNaN(price) || price <= 0) {
+                showToast('Mohon isi nama dan harga!');
+                return;
+            }
+
+            const totalAmount = price;
+
+            shiftData.expenses.push({
+                id: Date.now(),
+                name: name,
+                qty: qty,
+                unit: unit,
+                amount: totalAmount 
+            });
+
+            nameEl.value = '';
+            qtyEl.value = '';
+            unitEl.value = '';
+            priceEl.value = '';
+            nameEl.focus();
+
+            saveData();
+            renderContent();
+            updateFooter();
+        }
+
+        // --- Modal System for Deletion ---
+
+        function openModal(title, message, actionCallback) {
+            const modal = document.getElementById('confirm-modal');
+            const modalContent = document.getElementById('confirm-modal-content');
+            
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            
+            pendingAction = actionCallback;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('confirm-modal');
+            const modalContent = document.getElementById('confirm-modal-content');
+            
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                pendingAction = null;
+            }, 200);
+        }
+
+        document.getElementById('confirm-yes-btn').onclick = function() {
+            if (pendingAction) pendingAction();
+            closeModal();
+        };
+
+        function deleteExpense(id) {
+            openModal('Hapus Pengeluaran?', 'Item ini akan dihapus dari daftar.', () => {
+                shiftData.expenses = shiftData.expenses.filter(e => e.id !== id);
+                saveData();
+                renderContent();
+                updateFooter();
+            });
+        }
+
+        function confirmReset() {
+            openModal('Reset Semua Data?', 'Data Awal, Akhir, Pengeluaran, dan Laporan akan dihapus total.', () => {
+                denominations.forEach(d => {
+                    shiftData.start[d.value] = '';
+                    shiftData.end[d.value] = '';
+                });
+                shiftData.expenses = [];
+                shiftData.qris = '';
+                shiftData.qasir = '';
+                shiftData.notes = '';
+                shiftData.reportDate = new Date().toISOString().split('T')[0];
+                saveData();
+                renderContent();
+                updateFooter();
+                showToast('Data berhasil di-reset');
+            });
+        }
+
+        // --- Input Handlers ---
+
+        function updateFormattedInput(field, el) {
+            const rawValue = el.value.replace(/\D/g, '');
+            if (rawValue) {
+                el.value = numberFormatter.format(rawValue);
+            } else {
+                el.value = '';
+            }
+            const numVal = rawValue === '' ? '' : parseInt(rawValue, 10);
+            shiftData[field] = numVal;
+            saveData();
+            updateReportMath();
+        }
+
+        function updateNotesInput(value) {
+            shiftData.notes = value;
+            saveData();
+        }
+
+        function updateReportDate(value) {
+            shiftData.reportDate = value;
+            saveData();
+            renderContent();
+        }
+
+        // --- Helpers ---
+        function getFormattedDate(isoDate) {
+            if (!isoDate) return '';
+            const parts = isoDate.split('-');
+            const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            return dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function calculateTotal(mode) {
+            if (mode === 'expenses') {
+                return shiftData.expenses.reduce((acc, curr) => acc + curr.amount, 0);
+            }
+            const data = shiftData[mode];
+            return denominations.reduce((acc, curr) => {
+                const qty = data[curr.value];
+                return acc + ((typeof qty === 'number' ? qty : 0) * curr.value);
+            }, 0);
+        }
+
+        // --- Screenshot Logic ---
+        function captureScreenshot() {
+            showToast('Memproses gambar...');
+            
+            const original = document.getElementById('report-card');
+            const clone = original.cloneNode(true);
+            
+            clone.style.position = 'fixed';
+            clone.style.top = '-10000px';
+            clone.style.left = '-10000px';
+            clone.style.width = '500px'; 
+            
+            clone.classList.add('bg-white', 'px-8', 'py-8');
+            
+            const now = new Date();
+            const datePart = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            const timestampDiv = document.createElement('div');
+            timestampDiv.className = "mt-8 text-[10px] text-gray-400 font-medium";
+            timestampDiv.innerText = `Diambil pada ${datePart} ${hours}:${minutes}`;
+            
+            clone.appendChild(timestampDiv);
+
+            // Clean up Date Helper in Screenshot
+            const dateContainer = clone.querySelector('.mb-4.text-center');
+            if (dateContainer) {
+                const helperText = dateContainer.querySelector('.text-\\[10px\\]');
+                if (helperText) helperText.remove();
+                const dateWrapper = dateContainer.querySelector('.relative');
+                if (dateWrapper) {
+                    dateWrapper.classList.remove('cursor-pointer', 'hover:opacity-80');
+                    const dateInput = dateWrapper.querySelector('input');
+                    if (dateInput) dateInput.remove();
+
+                    const dateTextDiv = dateWrapper.querySelector('.border-b');
+                    if (dateTextDiv) {
+                        dateTextDiv.classList.remove('border-b', 'border-gray-200', 'pb-1');
+                    }
+                }
+            }
+
+            // Replace Input fields with Static Rows
+            const replaceInputWithStatic = (inputName, labelText, value) => {
+                const labels = Array.from(clone.querySelectorAll('label'));
+                const targetLabel = labels.find(l => l.textContent.includes(labelText));
+                
+                if (targetLabel) {
+                    const container = targetLabel.parentElement;
+                    const staticRow = document.createElement('div');
+                    staticRow.className = "flex justify-between text-gray-600 text-sm py-1";
+                    staticRow.innerHTML = `
+                        <span>${labelText}</span>
+                        <span class="font-medium">${formatter.format(value)}</span>
+                    `;
+                    container.replaceWith(staticRow);
+                }
+            };
+            
+            const qrisVal = typeof shiftData.qris === 'number' ? shiftData.qris : 0;
+            replaceInputWithStatic('qris', 'Pendapatan QRIS/Transfer', qrisVal);
+            
+            const qasirVal = typeof shiftData.qasir === 'number' ? shiftData.qasir : 0;
+            replaceInputWithStatic('qasir', 'Total Pendapatan Qasir (App)', qasirVal);
+            
+            // Transform Notes Textarea
+            const notesLabel = Array.from(clone.querySelectorAll('label')).find(l => l.textContent.includes('Keterangan Selisih'));
+            if (notesLabel) {
+                const container = notesLabel.parentElement;
+                const noteText = shiftData.notes || '-';
+                
+                const staticNote = document.createElement('div');
+                staticNote.className = "mt-4 space-y-1";
+                staticNote.innerHTML = `
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Keterangan Selisih</div>
+                    <div class="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">${noteText}</div>
+                `;
+                container.replaceWith(staticNote);
+            }
+            
+            const buttons = clone.querySelector('[data-html2canvas-ignore]');
+            if (buttons) buttons.remove();
+
+            document.body.appendChild(clone);
+            
+            html2canvas(clone, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                logging: false,
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                
+                // --- CUSTOM FILENAME LOGIC ---
+                // Format: Laporan_Harian_SKMK_YYYY-MM-DD from YYYY-MM-DD HHMMSS.png
+                
+                const reportDateStr = shiftData.reportDate; // Already YYYY-MM-DD
+                
+                const ts = new Date();
+                const tsYear = ts.getFullYear();
+                const tsMonth = String(ts.getMonth() + 1).padStart(2, '0');
+                const tsDay = String(ts.getDate()).padStart(2, '0');
+                const tsHour = String(ts.getHours()).padStart(2, '0');
+                const tsMin = String(ts.getMinutes()).padStart(2, '0');
+                const tsSec = String(ts.getSeconds()).padStart(2, '0');
+                
+                const filename = `Laporan_Harian_SKMK_${reportDateStr} from ${tsYear}-${tsMonth}-${tsDay} ${tsHour}${tsMin}${tsSec}.png`;
+                
+                link.download = filename;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('Gambar tersimpan di Galeri/Download!');
+                document.body.removeChild(clone);
+            }).catch(err => {
+                console.error(err);
+                showToast('Gagal menyimpan gambar');
+                if (document.body.contains(clone)) document.body.removeChild(clone);
+            });
+        }
+
+        // --- Rendering ---
+
+        function renderContent() {
+            mainContent.innerHTML = '';
+            if (currentMode === 'report') renderReport();
+            else if (currentMode === 'expenses') renderExpenses();
+            else renderInputList();
+        }
+
+        function renderInputList() {
+            const counts = shiftData[currentMode];
+            denominations.forEach(denom => {
+                const qty = counts[denom.value];
+                const subtotal = (qty || 0) * denom.value;
+                const formattedValue = denom.value.toLocaleString('id-ID');
+                const borderClass = qty ? denom.border : 'border-transparent hover:border-gray-200';
+                
+                const row = document.createElement('div');
+                row.id = `row-${denom.value}`;
+                row.className = `flex items-center p-3 rounded-xl border-2 transition-all duration-200 bg-white shadow-sm ${borderClass}`;
+                row.innerHTML = `
+                    <div class="flex-shrink-0 w-20 h-12 flex items-center justify-center rounded-lg font-bold text-sm ${denom.bg} ${denom.color}">
+                        ${formattedValue}
+                    </div>
+                    <div class="flex-1 mx-4">
+                        <label class="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5 block">Quantity</label>
+                        <input 
+                            type="number" 
+                            inputmode="numeric" 
+                            pattern="[0-9]*" 
+                            min="0" 
+                            placeholder="0"
+                            class="w-full text-lg font-semibold text-slate-900 placeholder-gray-300 focus:outline-none"
+                            value="${qty}"
+                            onfocus="this.select()"
+                            oninput="updateCount(${denom.value}, this.value)"
+                        >
+                    </div>
+                    <div class="text-right min-w-[80px]">
+                        <span class="text-xs text-gray-400 font-medium block">Subtotal</span>
+                        <span id="subtotal-${denom.value}" class="font-medium ${subtotal > 0 ? 'text-slate-900' : 'text-gray-300'}">
+                            ${subtotal > 0 ? formatter.format(subtotal).replace('Rp', '').trim() : '-'}
+                        </span>
+                    </div>
+                `;
+                mainContent.appendChild(row);
+            });
+            footerContainer.style.display = 'block';
+        }
+
+        function renderExpenses() {
+            const form = document.createElement('div');
+            form.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6";
+            form.innerHTML = `
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Tambah Pengeluaran</h3>
+                <div class="space-y-3">
+                    <input id="expense-name" type="text" placeholder="Nama Barang (misal: Beras)" 
+                        class="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm placeholder:text-sm"
+                        onkeydown="if(event.key === 'Enter') document.getElementById('expense-qty').focus()">
+                    
+                    <div class="flex space-x-1">
+                        <input id="expense-qty" type="number" inputmode="decimal" step="any" placeholder="Qty" 
+                            class="w-14 p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-center text-sm placeholder:text-sm"
+                            onkeydown="if(event.key === 'Enter') document.getElementById('expense-unit').focus()">
+                        
+                        <input id="expense-unit" type="text" placeholder="Satuan" 
+                            class="w-16 p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-center text-sm placeholder:text-sm"
+                            onkeydown="if(event.key === 'Enter') document.getElementById('expense-price').focus()">
+
+                        <input id="expense-price" type="number" inputmode="numeric" placeholder="Total Harga (Rp)" 
+                            class="flex-1 min-w-0 p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm placeholder:text-sm"
+                            onkeydown="if(event.key === 'Enter') addExpense()">
+                        
+                        <button onclick="addExpense()" class="flex-shrink-0 bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 active:bg-emerald-800 transition-colors">
+                            +
+                        </button>
+                    </div>
+                </div>
+            `;
+            mainContent.appendChild(form);
+
+            const listContainer = document.createElement('div');
+            listContainer.className = "space-y-2";
+            
+            if (shiftData.expenses.length === 0) {
+                listContainer.innerHTML = `<div class="text-center text-gray-400 text-sm py-8">Belum ada pengeluaran</div>`;
+            } else {
+                [...shiftData.expenses].reverse().forEach(item => {
+                    const qty = item.qty;
+                    const unit = item.unit || '';
+                    const detailText = qty ? `Qty: ${qty} ${unit}` : 'Pengeluaran';
+
+                    const itemEl = document.createElement('div');
+                    itemEl.className = "flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 fade-in";
+                    itemEl.innerHTML = `
+                        <div>
+                            <div class="font-medium text-slate-800">${item.name}</div>
+                            <div class="text-xs text-gray-400">${detailText}</div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-semibold text-red-600">-${formatter.format(item.amount).replace('Rp', '').trim()}</span>
+                            <button onclick="deleteExpense(${item.id})" class="p-2 -mr-2 text-gray-400 hover:text-red-500 transition-colors" aria-label="Hapus">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(itemEl);
+                });
+            }
+            mainContent.appendChild(listContainer);
+            footerContainer.style.display = 'block';
+        }
+
+        function updateRowVisuals(changedValue) {
+            if (currentMode === 'expenses' || currentMode === 'report') return;
+            const counts = shiftData[currentMode];
+            const qty = counts[changedValue];
+            const denom = denominations.find(d => d.value === changedValue);
+            const subtotal = (qty || 0) * denom.value;
+            const row = document.getElementById(`row-${changedValue}`);
+            const subtotalEl = document.getElementById(`subtotal-${changedValue}`);
+
+            if (qty) {
+                row.className = `flex items-center p-3 rounded-xl border-2 transition-all duration-200 bg-white shadow-sm ${denom.border}`;
+            } else {
+                row.className = `flex items-center p-3 rounded-xl border-2 transition-all duration-200 bg-white shadow-sm border-transparent hover:border-gray-200`;
+            }
+
+            if (subtotal > 0) {
+                subtotalEl.className = 'font-medium text-slate-900';
+                subtotalEl.textContent = formatter.format(subtotal).replace('Rp', '').trim();
+            } else {
+                subtotalEl.className = 'font-medium text-gray-300';
+                subtotalEl.textContent = '-';
+            }
+        }
+
+        function getReportCalculations() {
+            const startTotal = calculateTotal('start');
+            const endTotal = calculateTotal('end');
+            const expensesTotal = calculateTotal('expenses');
+            const netCashFlow = endTotal - startTotal;
+            const cashIncome = netCashFlow + expensesTotal;
+            const qris = typeof shiftData.qris === 'number' ? shiftData.qris : 0;
+            const totalIncome = cashIncome + qris;
+            const qasir = typeof shiftData.qasir === 'number' ? shiftData.qasir : 0;
+            const discrepancy = totalIncome - qasir;
+            return { startTotal, endTotal, expensesTotal, netCashFlow, cashIncome, qris, totalIncome, qasir, discrepancy };
+        }
+
+        function updateReportMath() {
+            const vals = getReportCalculations();
+            document.getElementById('rep-pendapatan-cash').textContent = formatter.format(vals.cashIncome);
+            document.getElementById('rep-total-pendapatan').textContent = formatter.format(vals.totalIncome);
+            
+            const disc = vals.discrepancy;
+            let label = '';
+            let color = '';
+
+            if (disc === 0) {
+                label = 'Sudah Sesuai';
+                color = 'text-emerald-600';
+            } else if (disc > 0) {
+                label = 'Surplus (Lebih)';
+                color = 'text-yellow-600';
+            } else {
+                label = 'Defisit (Kurang)';
+                color = 'text-red-600';
+            }
+
+            const discEl = document.getElementById('rep-selisih-pendapatan');
+            discEl.textContent = formatter.format(disc);
+            discEl.className = `font-bold text-2xl ${color}`;
+            
+            const labelEl = document.getElementById('rep-selisih-label');
+            labelEl.textContent = label;
+            labelEl.className = `text-xs font-medium mt-1 ${color}`;
+        }
+
+        function renderReport() {
+            const vals = getReportCalculations();
+            const formattedQris = shiftData.qris === '' ? '' : numberFormatter.format(shiftData.qris);
+            const formattedQasir = shiftData.qasir === '' ? '' : numberFormatter.format(shiftData.qasir);
+            
+            const formattedDate = getFormattedDate(shiftData.reportDate);
+
+            let discLabel = '';
+            let discColor = '';
+            if (vals.discrepancy === 0) {
+                discLabel = 'Sudah Sesuai';
+                discColor = 'text-emerald-600';
+            } else if (vals.discrepancy > 0) {
+                discLabel = 'Surplus (Lebih)';
+                discColor = 'text-yellow-600';
+            } else {
+                discLabel = 'Defisit (Kurang)';
+                discColor = 'text-red-600';
+            }
+
+            mainContent.innerHTML = `
+                <div id="report-card" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-5">
+                    <h2 class="text-center font-bold text-gray-900 text-lg">Laporan & Rekonsiliasi</h2>
+
+                    <!-- Date Selector (Custom UI) -->
+                    <div class="mb-4 text-center">
+                        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tanggal Laporan</label>
+                        <div class="mt-1 relative flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
+                            <!-- Custom Display -->
+                            <div class="text-slate-800 font-bold text-lg border-b border-gray-200 pb-1 px-4 min-w-[200px]">
+                                ${formattedDate}
+                            </div>
+                            <!-- Invisible Input Trigger -->
+                            <input type="date" 
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                value="${shiftData.reportDate}"
+                                onchange="updateReportDate(this.value)"
+                                onclick="try{this.showPicker()}catch(e){}"
+                            >
+                        </div>
+                        <div class="text-[10px] text-gray-300 mt-1">Ketuk tanggal untuk mengganti</div>
+                    </div>
+                    
+                    <!-- Basic Data -->
+                    <div class="space-y-2 text-sm border-b border-gray-100 pb-4">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Kas Awal</span>
+                            <span class="font-medium">${formatter.format(vals.startTotal)}</span>
+                        </div>
+                        <div class="flex justify-between text-gray-600">
+                            <span>Kas Akhir</span>
+                            <span class="font-medium">${formatter.format(vals.endTotal)}</span>
+                        </div>
+                        <div class="flex justify-between text-gray-600">
+                            <span>Selisih Kas</span>
+                            <span class="font-medium ${vals.netCashFlow >=0 ? 'text-green-600' : 'text-red-600'}">${formatter.format(vals.netCashFlow)}</span>
+                        </div>
+                        <div class="flex justify-between text-gray-600">
+                            <span>Total Pengeluaran</span>
+                            <span class="font-medium text-red-600">-${formatter.format(vals.expensesTotal)}</span>
+                        </div>
+                        <div class="flex justify-between font-semibold pt-2 border-t border-gray-50 mt-2 text-slate-800">
+                            <span>Pendapatan Cash</span>
+                            <span id="rep-pendapatan-cash">${formatter.format(vals.cashIncome)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Input Data -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pendapatan QRIS/Transfer</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 font-bold">Rp</span>
+                                </div>
+                                <input type="text" inputmode="numeric" placeholder="0" 
+                                    class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                    value="${formattedQris}" 
+                                    oninput="updateFormattedInput('qris', this)"
+                                >
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between font-semibold text-sm pt-2 border-t border-gray-50 mt-2 text-slate-800">
+                            <span>Total Pendapatan</span>
+                            <span id="rep-total-pendapatan" class="text-emerald-700">${formatter.format(vals.totalIncome)}</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Total Pendapatan Qasir (App)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 font-bold">Rp</span>
+                                </div>
+                                <input type="text" inputmode="numeric" placeholder="0" 
+                                    class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                    value="${formattedQasir}" 
+                                    oninput="updateFormattedInput('qasir', this)"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Final Result -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-gray-200">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 font-semibold uppercase mb-1">Total Selisih</div>
+                            <div id="rep-selisih-pendapatan" class="font-bold text-2xl ${discColor}">
+                                ${formatter.format(vals.discrepancy)}
+                            </div>
+                            <div id="rep-selisih-label" class="text-xs font-medium mt-1 ${discColor}">
+                                ${discLabel}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Keterangan Selisih</label>
+                        <textarea rows="3" placeholder="Jelaskan penyebab selisih..." 
+                            class="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                            oninput="updateNotesInput(this.value)"
+                        >${shiftData.notes}</textarea>
+                    </div>
+
+                    <!-- Buttons (Ignored by html2canvas) -->
+                    <div class="pt-2 space-y-3" data-html2canvas-ignore="true">
+                        <button onclick="captureScreenshot()" class="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Simpan ke Galeri</span>
+                        </button>
+                        <button onclick="copyReport()" class="w-full flex items-center justify-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-semibold transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+                            <span>Salin Laporan WhatsApp</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            footerContainer.style.display = 'none';
+        }
+
+        function updateFooter() {
+            if (currentMode === 'report') return;
+
+            const total = calculateTotal(currentMode);
+            footerTotal.textContent = formatter.format(total);
+            
+            if (currentMode === 'start') footerLabel.textContent = 'Total Kas Awal';
+            else if (currentMode === 'end') footerLabel.textContent = 'Total Kas Akhir';
+            else if (currentMode === 'expenses') footerLabel.textContent = 'Total Pengeluaran';
+            
+            if (total > 0) {
+                copyBtn.classList.remove('hidden');
+            } else {
+                copyBtn.classList.add('hidden');
+            }
+        }
+
+        // --- Reset & Copy Utils ---
+
+        function copyCurrentTotal() {
+            const total = calculateTotal(currentMode);
+            let label = "";
+            if (currentMode === 'start') label = "Total Kas Awal";
+            else if (currentMode === 'end') label = "Total Kas Akhir";
+            else if (currentMode === 'expenses') label = "Total Pengeluaran";
+
+            const text = `${label}: ${formatter.format(total)}`;
+            doCopy(text);
+        }
+
+        function copyReport() {
+            const vals = getReportCalculations();
+            
+            const dateStr = getFormattedDate(shiftData.reportDate);
+            
+            let expenseDetails = "";
+            if (shiftData.expenses.length > 0) {
+                expenseDetails = "\n\nRincian Pengeluaran:\n" + shiftData.expenses.map(e => {
+                    const unitStr = e.unit ? ` ${e.unit}` : '';
+                    const label = e.qty ? `${e.name} (Qty: ${e.qty}${unitStr})` : e.name;
+                    return `- ${label}: ${formatter.format(e.amount)}`;
+                }).join('\n');
+            }
+
+            let statusStr = '';
+            if (vals.discrepancy === 0) statusStr = 'SUDAH SESUAI';
+            else if (vals.discrepancy > 0) statusStr = 'SURPLUS (LEBIH)';
+            else statusStr = 'DEFISIT (KURANG)';
+
+            const text = `*Laporan Rekonsiliasi SKMK*\nTanggal: ${dateStr}\n\nKas Awal: ${formatter.format(vals.startTotal)}\nKas Akhir: ${formatter.format(vals.endTotal)}\nSelisih Kas: ${formatter.format(vals.netCashFlow)}\nTotal Pengeluaran: ${formatter.format(vals.expensesTotal)}\n\n*Pendapatan Cash: ${formatter.format(vals.cashIncome)}*\nPendapatan QRIS: ${formatter.format(vals.qris)}\n*Total Pendapatan: ${formatter.format(vals.totalIncome)}*\nTotal App Qasir: ${formatter.format(vals.qasir)}\n------------------\n*SELISIH AKHIR: ${formatter.format(vals.discrepancy)}*\n(${statusStr})\n\nKeterangan:\n${shiftData.notes || '-'}${expenseDetails}`;
+            
+            doCopy(text);
+        }
+
+        function doCopy(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(showToast).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast();
+            } catch (err) { }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (message) toast.innerText = message;
+            else toast.innerText = "Disalin ke clipboard!";
+            
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 2000);
+        }
+
+        // --- Init ---
+        switchTab('start');
+
+    </script>
+</body>
+</html>
