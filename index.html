@@ -320,30 +320,21 @@
             }).catch(err => { console.error(err); showToast('Gagal menyimpan gambar'); if (document.body.contains(clone)) document.body.removeChild(clone); });
         }
 
+        // REVISION: Re-added shareToWhatsApp to share both Image and Text
         function shareToWhatsApp() {
-            // 1. Copy text first (Backup mechanism)
             const reportText = getReportText();
+            
+            // Backup Copy (Silent)
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(reportText).catch(e => {});
-            } else {
-                // Fallback copy
-                try {
-                    const textArea = document.createElement("textarea");
-                    textArea.value = reportText;
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                } catch(e) {}
+                navigator.clipboard.writeText(reportText).catch(() => {});
             }
 
             if (!navigator.share) {
-                showToast('Browser ini tidak mendukung fitur Share.');
+                showToast('Browser tidak mendukung Share API. Gunakan tombol Salin & Simpan.');
                 return;
             }
 
-            showToast('Teks disalin. Memproses gambar...');
+            showToast('Memproses laporan...');
             const clone = prepareScreenshotClone();
             document.body.appendChild(clone);
             
@@ -355,20 +346,21 @@
                     const filename = getScreenshotFilename();
                     const file = new File([blob], filename, { type: 'image/png' });
                     
-                    // REVISION: Share ONLY file to avoid errors. Text is already in clipboard.
-                    const shareData = { files: [file] };
+                    const shareData = {
+                        files: [file],
+                        text: reportText,
+                        title: 'Laporan SKMK'
+                    };
 
                     if (navigator.canShare && navigator.canShare(shareData)) {
                         navigator.share(shareData)
-                            .then(() => showToast('Gambar dibagikan. Silakan TEMPEL teks di caption.'))
+                            .then(() => showToast('Berhasil membuka menu share'))
                             .catch((error) => {
                                 console.error('Share failed:', error);
-                                if (error.name !== 'AbortError') {
-                                    showToast('Gagal membagikan gambar.');
-                                }
+                                if (error.name !== 'AbortError') showToast('Gagal membagikan.');
                             });
                     } else {
-                        showToast('Browser menolak file gambar ini.');
+                        showToast('Perangkat menolak file gambar.');
                     }
                 }, 'image/png');
             }).catch(err => {
