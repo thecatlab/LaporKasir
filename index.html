@@ -303,8 +303,6 @@
             if (vals.discrepancy === 0) statusStr = 'SUDAH SESUAI';
             else if (vals.discrepancy > 0) statusStr = 'SURPLUS (LEBIH)';
             else statusStr = 'DEFISIT (KURANG)';
-            
-            // REVISION: Updated text format to match user request
             return `*Laporan Rekonsiliasi SKMK*\nTanggal: ${dateStr}\n\nKas Awal: ${formatter.format(vals.startTotal)}\nKas Akhir: ${formatter.format(vals.endTotal)}\nSelisih Kas: ${formatter.format(vals.netCashFlow)}\nTotal Pengeluaran: ${formatter.format(vals.expensesTotal)}\n\nPendapatan Cash: ${formatter.format(vals.cashIncome)}\nPendapatan QRIS: ${formatter.format(vals.qris)}\n\n*Total Pendapatan: ${formatter.format(vals.totalIncome)}*\n*Total App Qasir: ${formatter.format(vals.qasir)}*\n------------------\n*SELISIH AKHIR: ${formatter.format(vals.discrepancy)}*\n(${statusStr})\n\nKeterangan:\n${shiftData.notes || '-'}${expenseDetails}`;
         }
 
@@ -323,47 +321,56 @@
         }
 
         function shareToWhatsApp() {
-            // 1. Copy text to clipboard first as fallback
+            // 1. Copy text as fallback
             const reportText = getReportText();
-            // Use doCopy logic but without triggering toast immediately
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(reportText).catch(err => console.log('Clipboard fail', err));
-            } else {
-                // Fallback copy using text area (invisible)
-                try {
-                    const textArea = document.createElement("textarea");
-                    textArea.value = reportText;
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                } catch(e) {}
             }
 
-            showToast('Memproses gambar...');
+            // 2. Check basic support first
+            if (!navigator.share) {
+                showToast('Fitur share tidak didukung. Membuka WhatsApp Text...');
+                setTimeout(() => { window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank'); }, 1000);
+                return;
+            }
+
+            showToast('Memproses gambar & teks...');
             const clone = prepareScreenshotClone();
             document.body.appendChild(clone);
             
             html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true }).then(canvas => {
                 canvas.toBlob(blob => {
+                    if (document.body.contains(clone)) document.body.removeChild(clone);
+                    if (!blob) return;
+
                     const filename = getScreenshotFilename();
                     const file = new File([blob], filename, { type: 'image/png' });
-                    
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        // Attempt to share both file and text
-                        navigator.share({
-                            files: [file],
-                            text: reportText
-                        })
-                        .then(() => showToast('Jika teks tidak muncul, Silakan Tempel/Paste (sudah disalin).'))
-                        .catch((error) => console.log('Sharing failed', error));
-                    } else { 
-                        showToast('Browser tidak mendukung share gambar. Gunakan Simpan ke Galeri.'); 
+                    const shareData = { files: [file], text: reportText };
+
+                    // 3. Try Sharing
+                    if (navigator.canShare && navigator.canShare(shareData)) {
+                        navigator.share(shareData)
+                            .then(() => showToast('Berhasil dibagikan!'))
+                            .catch((error) => {
+                                console.error('Share failed:', error);
+                                // Robust Fallback for iOS/Desktop cancellations or errors
+                                if (error.name !== 'AbortError') {
+                                    showToast('Gagal share gambar. Mengalihkan ke teks...');
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+                                }
+                            });
+                    } else {
+                        // Fallback if files not supported
+                        showToast('Browser menolak file. Mengirim teks saja...');
+                        window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
                     }
-                    if (document.body.contains(clone)) document.body.removeChild(clone);
-                });
-            }).catch(err => { console.error(err); showToast('Gagal memproses gambar'); if (document.body.contains(clone)) document.body.removeChild(clone); });
+                }, 'image/png');
+            }).catch(err => {
+                console.error(err);
+                if (document.body.contains(clone)) document.body.removeChild(clone);
+                showToast('Gagal render. Mengirim teks saja...');
+                window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+            });
         }
 
         async function saveToDrive() {
