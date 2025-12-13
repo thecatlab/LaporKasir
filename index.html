@@ -321,16 +321,29 @@
         }
 
         function shareToWhatsApp() {
-            // 1. Generate text
+            // 1. Copy text first (Backup mechanism)
             const reportText = getReportText();
-            
-            // 2. Fallback Copy
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(reportText).catch(err => console.log('Clipboard fail', err));
+                navigator.clipboard.writeText(reportText).catch(e => {});
+            } else {
+                // Fallback copy
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = reportText;
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                } catch(e) {}
             }
 
-            // 3. Generate Image
-            showToast('Memproses gambar & teks...');
+            if (!navigator.share) {
+                showToast('Browser ini tidak mendukung fitur Share.');
+                return;
+            }
+
+            showToast('Teks disalin. Memproses gambar...');
             const clone = prepareScreenshotClone();
             document.body.appendChild(clone);
             
@@ -341,30 +354,27 @@
 
                     const filename = getScreenshotFilename();
                     const file = new File([blob], filename, { type: 'image/png' });
-                    const shareData = { files: [file], text: reportText };
+                    
+                    // REVISION: Share ONLY file to avoid errors. Text is already in clipboard.
+                    const shareData = { files: [file] };
 
-                    // 4. Try Sharing
                     if (navigator.canShare && navigator.canShare(shareData)) {
                         navigator.share(shareData)
-                            .then(() => showToast('Berhasil membuka menu share!'))
+                            .then(() => showToast('Gambar dibagikan. Silakan TEMPEL teks di caption.'))
                             .catch((error) => {
                                 console.error('Share failed:', error);
                                 if (error.name !== 'AbortError') {
-                                    showToast('Gagal membagikan gambar. Teks telah disalin.');
-                                    // Fallback to wa.me with text only
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+                                    showToast('Gagal membagikan gambar.');
                                 }
                             });
                     } else {
-                        showToast('Perangkat tidak mendukung share file. Membuka WA Teks...');
-                        window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+                        showToast('Browser menolak file gambar ini.');
                     }
                 }, 'image/png');
             }).catch(err => {
                 console.error(err);
-                showToast('Gagal render. Mengirim teks saja...');
+                showToast('Gagal render gambar.');
                 if (document.body.contains(clone)) document.body.removeChild(clone);
-                window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
             });
         }
 
