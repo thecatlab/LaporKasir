@@ -92,8 +92,9 @@
         const GOOGLE_DRIVE_FOLDER_ID = '1wBzVkBvLXEPn5pO87oYmJXo7wiG5H2LR';
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzakj9LZ3LX5xxQKZ0P_Ea-ZpZCaWfZHqrE0LWvZYtCyy5qmI-0YUov4nnORZ5a1KL_hg/exec';
 
+        // UPDATED: Added lainLain and setorTunai to initial state
         let currentMode = 'start';
-        let shiftData = { start: {}, end: {}, expenses: [], qris: '', qasir: '', notes: '', reportDate: new Date().toISOString().split('T')[0] };
+        let shiftData = { start: {}, end: {}, expenses: [], qris: '', lainLain: '', setorTunai: '', qasir: '', notes: '', reportDate: new Date().toISOString().split('T')[0] };
         let pendingAction = null;
 
         denominations.forEach(d => { shiftData.start[d.value] = ''; shiftData.end[d.value] = ''; });
@@ -106,6 +107,10 @@
                 if (parsed.end) shiftData.end = { ...shiftData.end, ...parsed.end };
                 if (Array.isArray(parsed.expenses)) shiftData.expenses = parsed.expenses;
                 shiftData.qris = parsed.qris !== undefined ? parsed.qris : '';
+                // UPDATED: Load new fields
+                shiftData.lainLain = parsed.lainLain !== undefined ? parsed.lainLain : '';
+                shiftData.setorTunai = parsed.setorTunai !== undefined ? parsed.setorTunai : '';
+                
                 shiftData.qasir = parsed.qasir !== undefined ? parsed.qasir : '';
                 shiftData.notes = parsed.notes !== undefined ? parsed.notes : '';
                 if (parsed.reportDate) shiftData.reportDate = parsed.reportDate;
@@ -133,17 +138,30 @@
             }, 0);
         }
 
+        // UPDATED: Revised calculation logic to include Setor Tunai and Lain-Lain
         function getReportCalculations() {
             const startTotal = calculateTotal('start');
             const endTotal = calculateTotal('end');
             const expensesTotal = calculateTotal('expenses');
-            const netCashFlow = endTotal - startTotal;
-            const cashIncome = netCashFlow + expensesTotal;
+            
+            // New Fields
             const qris = typeof shiftData.qris === 'number' ? shiftData.qris : 0;
-            const totalIncome = cashIncome + qris;
+            const lainLain = typeof shiftData.lainLain === 'number' ? shiftData.lainLain : 0;
+            const setorTunai = typeof shiftData.setorTunai === 'number' ? shiftData.setorTunai : 0;
+
+            const netCashFlow = endTotal - startTotal;
+            
+            // Cash Income = (End Cash + Expenses + Setor Tunai) - Start Cash
+            // Setor Tunai is added back because it's cash that was generated but removed from drawer
+            const cashIncome = netCashFlow + expensesTotal + setorTunai;
+            
+            // Total Income = Cash Income + QRIS + Lain-Lain
+            const totalIncome = cashIncome + qris + lainLain;
+            
             const qasir = typeof shiftData.qasir === 'number' ? shiftData.qasir : 0;
             const discrepancy = totalIncome - qasir;
-            return { startTotal, endTotal, expensesTotal, netCashFlow, cashIncome, qris, totalIncome, qasir, discrepancy };
+            
+            return { startTotal, endTotal, expensesTotal, netCashFlow, cashIncome, qris, lainLain, setorTunai, totalIncome, qasir, discrepancy };
         }
 
         function formatLabel(value) {
@@ -271,7 +289,9 @@
         function confirmReset() {
             openModal('Reset Semua Data?', 'Data Awal, Akhir, Pengeluaran, dan Laporan akan dihapus total.', () => {
                 denominations.forEach(d => { shiftData.start[d.value] = ''; shiftData.end[d.value] = ''; });
-                shiftData.expenses = []; shiftData.qris = ''; shiftData.qasir = ''; shiftData.notes = ''; shiftData.reportDate = new Date().toISOString().split('T')[0];
+                shiftData.expenses = []; 
+                shiftData.qris = ''; shiftData.lainLain = ''; shiftData.setorTunai = ''; // UPDATED: Reset new fields
+                shiftData.qasir = ''; shiftData.notes = ''; shiftData.reportDate = new Date().toISOString().split('T')[0];
                 saveData(); renderContent(); updateFooter(); showToast('Data berhasil di-reset');
             });
         }
@@ -295,16 +315,15 @@
 
         // --- 5. RENDER FUNCTIONS ---
         function renderDenomGrid(data, title) {
-            // UPDATED: Changed font color to text-gray-400 to exactly match 'Tanggal Laporan' styling
             let html = `<div class="mb-4"><div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 text-center">${title}</div><div class="grid grid-cols-4 gap-2">`;
             denominations.forEach(d => {
                 const count = data[d.value] || 0;
                 html += `
                     <div class="flex flex-col rounded-xl overflow-hidden border ${d.border}">
-                        <div class="${d.bg} ${d.color} text-xs font-bold h-7 flex items-center justify-center">
+                        <div class="${d.bg} ${d.color} text-xs font-bold py-2 h-auto min-h-[30px] flex items-center justify-center">
                             ${formatLabel(d.value)}
                         </div>
-                        <div class="bg-white text-slate-800 font-bold text-xl h-10 flex items-center justify-center">
+                        <div class="bg-white text-slate-800 font-bold text-xl py-2 h-auto min-h-[32px] flex items-center justify-center">
                             ${count}
                         </div>
                     </div>
@@ -317,6 +336,8 @@
         function renderReport() {
             const vals = getReportCalculations();
             const formattedQris = shiftData.qris === '' ? '' : numberFormatter.format(shiftData.qris);
+            const formattedLainLain = shiftData.lainLain === '' ? '' : numberFormatter.format(shiftData.lainLain); // NEW
+            const formattedSetorTunai = shiftData.setorTunai === '' ? '' : numberFormatter.format(shiftData.setorTunai); // NEW
             const formattedQasir = shiftData.qasir === '' ? '' : numberFormatter.format(shiftData.qasir);
             const formattedDate = getFormattedDate(shiftData.reportDate);
             let discLabel = '', discColor = '';
@@ -327,8 +348,7 @@
             const gridAwal = renderDenomGrid(shiftData.start, 'Rincian Fisik Awal');
             const gridAkhir = renderDenomGrid(shiftData.end, 'Rincian Fisik Akhir');
 
-            // MOVED: gridAwal and gridAkhir are now placed after the Keterangan Selisih textarea
-            mainContent.innerHTML = `<div id="report-card" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-5"><h2 class="text-center font-bold text-gray-900 text-lg">Laporan & Rekonsiliasi</h2><div class="mb-2 text-center"><label class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tanggal Laporan</label><div class="mt-1 relative flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"><div class="text-slate-800 font-bold text-lg border-b border-gray-200 pb-1 px-4 min-w-[200px]">${formattedDate}</div><input type="date" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" value="${shiftData.reportDate}" onchange="window.updateReportDate(this.value)" onclick="try{this.showPicker()}catch(e){}"></div><div class="text-[10px] text-gray-300 mt-1">Ketuk tanggal untuk mengganti</div></div><div class="space-y-2 text-sm border-b border-gray-100 pb-4"><div class="flex justify-between text-gray-600"><span>Kas Awal</span><span class="font-medium">${formatter.format(vals.startTotal)}</span></div><div class="flex justify-between text-gray-600"><span>Kas Akhir</span><span class="font-medium">${formatter.format(vals.endTotal)}</span></div><div class="flex justify-between text-gray-600"><span>Selisih Kas</span><span class="font-medium ${vals.netCashFlow >=0 ? 'text-green-600' : 'text-red-600'}">${formatter.format(vals.netCashFlow)}</span></div><div class="flex justify-between text-gray-600"><span>Total Pengeluaran</span><span class="font-medium text-red-600">-${formatter.format(vals.expensesTotal)}</span></div><div class="flex justify-between font-semibold pt-2 border-t border-gray-50 mt-2 text-slate-800"><span>Pendapatan Cash</span><span id="rep-pendapatan-cash">${formatter.format(vals.cashIncome)}</span></div></div><div class="space-y-4"><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pendapatan QRIS/Transfer</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedQris}" oninput="window.updateFormattedInput('qris', this)"></div></div><div class="flex justify-between font-semibold text-sm pt-2 border-t border-gray-50 mt-2 text-slate-800"><span>Total Pendapatan</span><span id="rep-total-pendapatan" class="text-emerald-700">${formatter.format(vals.totalIncome)}</span></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Total Pendapatan Qasir (App)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" value="${formattedQasir}" oninput="window.updateFormattedInput('qasir', this)"></div></div></div><div class="bg-slate-50 p-4 rounded-xl border border-gray-200"><div class="text-center"><div class="text-xs text-gray-500 font-semibold uppercase mb-1">Total Selisih</div><div id="rep-selisih-pendapatan" class="font-bold text-2xl ${discColor}">${formatter.format(vals.discrepancy)}</div><div id="rep-selisih-label" class="text-xs font-medium mt-1 ${discColor}">${discLabel}</div></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Keterangan Selisih</label><textarea rows="3" placeholder="Jelaskan penyebab selisih..." class="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none" oninput="window.updateNotesInput(this.value)">${shiftData.notes}</textarea></div><div class="border-t border-gray-50 pt-4 space-y-4">${gridAwal}${gridAkhir}</div><div class="pt-2 space-y-3" data-html2canvas-ignore="true"><button onclick="window.handleReportAndSave()" class="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg><span>Laporkan</span></button><div class="grid grid-cols-2 gap-3"><button onclick="window.captureScreenshot()" class="flex items-center justify-center space-x-2 bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Simpan</span></button><button onclick="window.copyReport()" class="flex items-center justify-center space-x-2 bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span>Salin</span></button></div></div></div>`;
+            mainContent.innerHTML = `<div id="report-card" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-5"><h2 class="text-center font-bold text-gray-900 text-lg">Laporan & Rekonsiliasi</h2><div class="mb-2 text-center"><label class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tanggal Laporan</label><div class="mt-1 relative flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"><div class="text-slate-800 font-bold text-lg border-b border-gray-200 pb-1 px-4 min-w-[200px]">${formattedDate}</div><input type="date" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" value="${shiftData.reportDate}" onchange="window.updateReportDate(this.value)" onclick="try{this.showPicker()}catch(e){}"></div><div class="text-[10px] text-gray-300 mt-1">Ketuk tanggal untuk mengganti</div></div><div class="space-y-2 text-sm border-b border-gray-100 pb-4"><div class="flex justify-between text-gray-600"><span>Kas Awal</span><span class="font-medium">${formatter.format(vals.startTotal)}</span></div><div class="flex justify-between text-gray-600"><span>Kas Akhir</span><span class="font-medium">${formatter.format(vals.endTotal)}</span></div><div class="flex justify-between text-gray-600"><span>Selisih Kas</span><span class="font-medium ${vals.netCashFlow >=0 ? 'text-green-600' : 'text-red-600'}">${formatter.format(vals.netCashFlow)}</span></div><div class="flex justify-between text-gray-600"><span>Total Pengeluaran</span><span class="font-medium text-red-600">-${formatter.format(vals.expensesTotal)}</span></div><div class="flex justify-between font-semibold pt-2 border-t border-gray-50 mt-2 text-slate-800"><span>Pendapatan Cash</span><span id="rep-pendapatan-cash">${formatter.format(vals.cashIncome)}</span></div></div><div class="space-y-4"><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pendapatan QRIS/Transfer</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedQris}" oninput="window.updateFormattedInput('qris', this)"></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pendapatan Lain-Lain</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedLainLain}" oninput="window.updateFormattedInput('lainLain', this)"></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Setor Tunai (Diambil dari Kas)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedSetorTunai}" oninput="window.updateFormattedInput('setorTunai', this)"></div></div><div class="flex justify-between font-semibold text-sm pt-2 border-t border-gray-50 mt-2 text-slate-800"><span>Total Pendapatan</span><span id="rep-total-pendapatan" class="text-emerald-700">${formatter.format(vals.totalIncome)}</span></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Total Pendapatan Qasir (App)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" value="${formattedQasir}" oninput="window.updateFormattedInput('qasir', this)"></div></div></div><div class="bg-slate-50 p-4 rounded-xl border border-gray-200"><div class="text-center"><div class="text-xs text-gray-500 font-semibold uppercase mb-1">Total Selisih</div><div id="rep-selisih-pendapatan" class="font-bold text-2xl ${discColor}">${formatter.format(vals.discrepancy)}</div><div id="rep-selisih-label" class="text-xs font-medium mt-1 ${discColor}">${discLabel}</div></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Keterangan Selisih</label><textarea rows="3" placeholder="Jelaskan penyebab selisih..." class="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none" oninput="window.updateNotesInput(this.value)">${shiftData.notes}</textarea></div><div class="border-t border-gray-50 pt-4 space-y-4">${gridAwal}${gridAkhir}</div><div class="pt-2 space-y-3" data-html2canvas-ignore="true"><button onclick="window.handleReportAndSave()" class="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg><span>Laporkan</span></button><div class="grid grid-cols-2 gap-3"><button onclick="window.captureScreenshot()" class="flex items-center justify-center space-x-2 bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Simpan</span></button><button onclick="window.copyReport()" class="flex items-center justify-center space-x-2 bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span>Salin</span></button></div></div></div>`;
             footerContainer.style.display = 'none';
         }
 
@@ -423,7 +443,9 @@
             if (vals.discrepancy === 0) statusStr = 'SUDAH SESUAI';
             else if (vals.discrepancy > 0) statusStr = 'SURPLUS (LEBIH)';
             else statusStr = 'DEFISIT (KURANG)';
-            return `*Laporan Rekonsiliasi SKMK*\nTanggal: ${dateStr}\n\nKas Awal: ${formatter.format(vals.startTotal)}\nKas Akhir: ${formatter.format(vals.endTotal)}\nSelisih Kas: ${formatter.format(vals.netCashFlow)}\nTotal Pengeluaran: ${formatter.format(vals.expensesTotal)}\n\nPendapatan Cash: ${formatter.format(vals.cashIncome)}\nPendapatan QRIS: ${formatter.format(vals.qris)}\n\n*Total Pendapatan: ${formatter.format(vals.totalIncome)}*\n*Total App Qasir: ${formatter.format(vals.qasir)}*\n------------------\n*SELISIH AKHIR: ${formatter.format(vals.discrepancy)}*\n(${statusStr})\n\nKeterangan:\n${shiftData.notes || '-'}${expenseDetails}`;
+            
+            // UPDATED: Added new fields to text report
+            return `*Laporan Rekonsiliasi SKMK*\nTanggal: ${dateStr}\n\nKas Awal: ${formatter.format(vals.startTotal)}\nKas Akhir: ${formatter.format(vals.endTotal)}\nSelisih Kas: ${formatter.format(vals.netCashFlow)}\nTotal Pengeluaran: ${formatter.format(vals.expensesTotal)}\nSetor Tunai: ${formatter.format(vals.setorTunai)}\n\nPendapatan Cash: ${formatter.format(vals.cashIncome)}\nPendapatan QRIS: ${formatter.format(vals.qris)}\nPendapatan Lain-Lain: ${formatter.format(vals.lainLain)}\n\n*Total Pendapatan: ${formatter.format(vals.totalIncome)}*\n*Total App Qasir: ${formatter.format(vals.qasir)}*\n------------------\n*SELISIH AKHIR: ${formatter.format(vals.discrepancy)}*\n(${statusStr})\n\nKeterangan:\n${shiftData.notes || '-'}${expenseDetails}`;
         }
 
         function prepareScreenshotClone() {
@@ -501,6 +523,10 @@
             };
             
             replaceInputWithStatic('qris', 'Pendapatan QRIS/Transfer', typeof shiftData.qris === 'number' ? shiftData.qris : 0);
+            // UPDATED: Add replacements for new fields
+            replaceInputWithStatic('lainLain', 'Pendapatan Lain-Lain', typeof shiftData.lainLain === 'number' ? shiftData.lainLain : 0);
+            replaceInputWithStatic('setorTunai', 'Setor Tunai (Diambil dari Kas)', typeof shiftData.setorTunai === 'number' ? shiftData.setorTunai : 0);
+            
             replaceInputWithStatic('qasir', 'Total Pendapatan Qasir (App)', typeof shiftData.qasir === 'number' ? shiftData.qasir : 0);
             
             const notesLabel = Array.from(clone.querySelectorAll('label')).find(l => l.textContent.includes('Keterangan Selisih'));
