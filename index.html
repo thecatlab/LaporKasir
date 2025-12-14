@@ -138,7 +138,7 @@
             }, 0);
         }
 
-        // UPDATED: Revised calculation logic to include Setor Tunai and Lain-Lain
+        // UPDATED: Revised calculation logic to include Setor Tunai and Lain-Lain correctly
         function getReportCalculations() {
             const startTotal = calculateTotal('start');
             const endTotal = calculateTotal('end');
@@ -152,14 +152,18 @@
             const netCashFlow = endTotal - startTotal;
             
             // Cash Income = (End Cash + Expenses + Setor Tunai) - Start Cash
-            // Setor Tunai is added back because it's cash that was generated but removed from drawer
+            // NOTE: Pendapatan Lain-Lain is ALREADY inside 'endTotal', so it is naturally included in 'cashIncome'.
             const cashIncome = netCashFlow + expensesTotal + setorTunai;
             
-            // Total Income = Cash Income + QRIS + Lain-Lain
-            const totalIncome = cashIncome + qris + lainLain;
+            // Total Income (Real Money Received) = Cash Income + QRIS
+            // UPDATED: Removed 'lainLain' from here to avoid double counting.
+            const totalIncome = cashIncome + qris;
             
             const qasir = typeof shiftData.qasir === 'number' ? shiftData.qasir : 0;
-            const discrepancy = totalIncome - qasir;
+            
+            // Discrepancy = Real Income - Target (Qasir) - Known Extra Income (Lain-Lain)
+            // UPDATED: Subtracting lainLain to balance the equation against Qasir.
+            const discrepancy = totalIncome - qasir - lainLain;
             
             return { startTotal, endTotal, expensesTotal, netCashFlow, cashIncome, qris, lainLain, setorTunai, totalIncome, qasir, discrepancy };
         }
@@ -470,6 +474,20 @@
             
             clone.appendChild(timestampDiv);
 
+            // --- REVISION: Compact Income List Spacing for Screenshot ---
+            // Find the container holding the income inputs and tighten the spacing
+            const labels = Array.from(clone.querySelectorAll('label'));
+            const qrisLabel = labels.find(l => l.textContent.includes('Pendapatan QRIS'));
+            if (qrisLabel) {
+                const incomeContainer = qrisLabel.closest('.space-y-4');
+                if (incomeContainer) {
+                    incomeContainer.classList.remove('space-y-4');
+                    // UPDATED: Changed from space-y-1 to space-y-2
+                    incomeContainer.classList.add('space-y-2'); 
+                }
+            }
+            // -------------------------------------------------------------
+
             // --- REVISION: Fix Denomination Grid Spacing for Screenshot ---
             // html2canvas renders text slightly larger/differently, causing clipping in tight boxes.
             // We increase the container heights in the CLONE only, leaving the web UI compact.
@@ -523,7 +541,6 @@
             };
             
             replaceInputWithStatic('qris', 'Pendapatan QRIS/Transfer', typeof shiftData.qris === 'number' ? shiftData.qris : 0);
-            // UPDATED: Add replacements for new fields
             replaceInputWithStatic('lainLain', 'Pendapatan Lain-Lain', typeof shiftData.lainLain === 'number' ? shiftData.lainLain : 0);
             replaceInputWithStatic('setorTunai', 'Setor Tunai (Diambil dari Kas)', typeof shiftData.setorTunai === 'number' ? shiftData.setorTunai : 0);
             
