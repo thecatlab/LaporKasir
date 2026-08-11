@@ -87,6 +87,16 @@ function doPost(e) {
 function saveReport_(payload) {
   if (!payload || !payload.reportDate) throw new Error('Tanggal laporan tidak ditemukan.');
 
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return saveReportLocked_(payload);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function saveReportLocked_(payload) {
   var spreadsheet = getOrCreateSpreadsheet_();
   var reportSheet = ensureSheet_(spreadsheet, REPORT_SHEET_NAME, REPORT_HEADERS);
   var expenseSheet = ensureSheet_(spreadsheet, EXPENSE_SHEET_NAME, EXPENSE_HEADERS);
@@ -94,6 +104,7 @@ function saveReport_(payload) {
   var duplicate = findDuplicate_(reportSheet, fingerprint);
 
   if (duplicate) {
+    refreshDuplicate_(reportSheet, payload, spreadsheet, fingerprint, duplicate);
     return {
       ok: true,
       status: 'duplicate',
@@ -128,6 +139,39 @@ function saveReport_(payload) {
     revision: revision,
     spreadsheetUrl: spreadsheet.getUrl(),
     screenshotUrl: screenshot.url
+  };
+}
+
+function refreshDuplicate_(sheet, payload, spreadsheet, fingerprint, duplicate) {
+  var existing = getExistingScreenshot_(sheet, duplicate.row);
+  var screenshot = existing.id || !payload.image || !payload.image.base64
+    ? existing
+    : saveScreenshot_(payload.image);
+  var reportRow = buildReportRow_(payload, {
+    submittedAtServer: new Date(),
+    spreadsheet: spreadsheet,
+    submissionId: duplicate.submissionId || Utilities.getUuid(),
+    revision: duplicate.revision || 1,
+    fingerprint: fingerprint,
+    screenshot: screenshot
+  });
+
+  sheet.getRange(duplicate.row, 1, 1, REPORT_HEADERS.length).setValues([reportRow]);
+}
+
+function getExistingScreenshot_(sheet, rowNumber) {
+  var headers = sheet.getRange(1, 1, 1, REPORT_HEADERS.length).getValues()[0];
+  var values = sheet.getRange(rowNumber, 1, 1, REPORT_HEADERS.length).getValues()[0];
+
+  function valueFor(header) {
+    var index = headers.indexOf(header);
+    return index >= 0 ? String(values[index] || '') : '';
+  }
+
+  return {
+    id: valueFor('screenshot_file_id'),
+    url: valueFor('screenshot_url'),
+    filename: valueFor('screenshot_filename')
   };
 }
 
@@ -286,13 +330,15 @@ function findDuplicate_(sheet, fingerprint) {
   var headers = values[0];
   var fingerprintIndex = headers.indexOf('fingerprint');
   var submissionIndex = headers.indexOf('submission_id');
+  var revisionIndex = headers.indexOf('revision');
   if (fingerprintIndex < 0) return null;
 
-  for (var i = 1; i < values.length; i++) {
+  for (var i = values.length - 1; i >= 1; i--) {
     if (String(values[i][fingerprintIndex]) === fingerprint) {
       return {
         row: i + 1,
-        submissionId: submissionIndex >= 0 ? String(values[i][submissionIndex]) : ''
+        submissionId: submissionIndex >= 0 ? String(values[i][submissionIndex]) : '',
+        revision: revisionIndex >= 0 ? numberValue_(values[i][revisionIndex]) : 0
       };
     }
   }

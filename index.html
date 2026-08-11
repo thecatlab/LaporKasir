@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="application-version" content="2026.08.11.1">
+    <meta name="application-version" content="2026.08.11.2">
     <title>Laporan Kasir SKMK</title>
     
     <!-- Favicon (Wallet Icon) -->
@@ -377,7 +377,10 @@
             const gridAkhir = renderDenomGrid(shiftData.end, 'Rincian Fisik Akhir');
 
             mainContent.innerHTML = `<div id="report-card" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-5"><h2 class="text-center font-bold text-gray-900 text-lg">Laporan & Rekonsiliasi</h2><div class="mb-2 text-center"><label class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tanggal Laporan</label><div class="mt-1 relative flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"><div class="text-slate-800 font-bold text-lg border-b border-gray-200 pb-1 px-4 min-w-[200px]">${formattedDate}</div><input type="date" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" value="${shiftData.reportDate}" onchange="window.updateReportDate(this.value)" onclick="try{this.showPicker()}catch(e){}"></div><div class="text-[10px] text-gray-300 mt-1">Ketuk tanggal untuk mengganti</div></div><div class="space-y-2 text-sm border-b border-gray-100 pb-4"><div class="flex justify-between text-gray-600"><span>Kas Awal</span><span class="font-medium">${formatter.format(vals.startTotal)}</span></div><div class="flex justify-between text-gray-600"><span>Kas Akhir</span><span class="font-medium">${formatter.format(vals.endTotal)}</span></div><div class="flex justify-between text-gray-600"><span>Selisih Kas</span><span class="font-medium ${vals.netCashFlow >=0 ? 'text-green-600' : 'text-red-600'}">${formatter.format(vals.netCashFlow)}</span></div><div class="flex justify-between text-gray-600"><span>Total Pengeluaran</span><span class="font-medium text-red-600">-${formatter.format(vals.expensesTotal)}</span></div><div class="flex justify-between font-semibold pt-2 border-t border-gray-50 mt-2 text-slate-800"><span>Pendapatan Cash</span><span id="rep-pendapatan-cash">${formatter.format(vals.cashIncome)}</span></div></div><div class="space-y-4"><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pendapatan QRIS/Transfer</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedQris}" oninput="window.updateFormattedInput('qris', this)"></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pendapatan Lain-Lain</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedLainLain}" oninput="window.updateFormattedInput('lainLain', this)"></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Setor Tunai (Diambil dari Kas)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none" value="${formattedSetorTunai}" oninput="window.updateFormattedInput('setorTunai', this)"></div></div><div class="flex justify-between font-semibold text-sm pt-2 border-t border-gray-50 mt-2 text-slate-800"><span>Total Pendapatan</span><span id="rep-total-pendapatan" class="text-emerald-700">${formatter.format(vals.totalIncome)}</span></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Total Pendapatan Qasir (App)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">Rp</span></div><input type="text" inputmode="numeric" placeholder="0" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-right font-semibold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" value="${formattedQasir}" oninput="window.updateFormattedInput('qasir', this)"></div></div></div><div class="bg-slate-50 p-4 rounded-xl border border-gray-200"><div class="text-center"><div class="text-xs text-gray-500 font-semibold uppercase mb-1">Total Selisih</div><div id="rep-selisih-pendapatan" class="font-bold text-2xl ${discColor}">${formatter.format(vals.discrepancy)}</div><div id="rep-selisih-label" class="text-xs font-medium mt-1 ${discColor}">${discLabel}</div></div></div><div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Keterangan Selisih</label><textarea rows="3" placeholder="Jelaskan penyebab selisih..." class="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none" oninput="window.updateNotesInput(this.value)">${shiftData.notes}</textarea></div><div class="border-t border-gray-50 pt-4 space-y-4">${gridAwal}${gridAkhir}</div><div class="pt-2 space-y-3" data-html2canvas-ignore="true"><button id="report-submit-btn" onclick="window.handleReportAndSave()" class="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-colors"><span id="report-submit-spinner" class="hidden w-5 h-5 border-2 border-white/60 border-t-white rounded-full animate-spin"></span><svg id="report-submit-icon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg><span id="report-submit-label">Laporkan</span></button><div class="grid grid-cols-2 gap-3"><button onclick="window.captureScreenshot()" class="flex items-center justify-center space-x-2 bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Simpan</span></button><button onclick="window.copyReport()" class="flex items-center justify-center space-x-2 bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 py-3 rounded-xl font-semibold transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span>Salin</span></button></div></div></div>`;
-            mainContent.querySelector('button[onclick="window.captureScreenshot()"] span').textContent = 'Unduh Gambar';
+            const saveButton = mainContent.querySelector('button[onclick="window.captureScreenshot()"]');
+            saveButton.id = 'report-save-btn';
+            saveButton.onclick = () => window.handleReportAndSave('download');
+            saveButton.querySelector('span').textContent = 'Simpan';
             footerContainer.style.display = 'none';
             setReportSubmitting(isSubmittingReport);
         }
@@ -429,19 +432,26 @@
         }
 
         // --- 7. ADDITIONAL ACTION HANDLERS ---
-        function setReportSubmitting(isLoading, label) {
+        function setReportSubmitting(isLoading, action) {
             isSubmittingReport = isLoading;
             const btn = document.getElementById('report-submit-btn');
+            const saveBtn = document.getElementById('report-save-btn');
             const spinner = document.getElementById('report-submit-spinner');
             const icon = document.getElementById('report-submit-icon');
             const labelEl = document.getElementById('report-submit-label');
             if (!btn || !spinner || !icon || !labelEl) return;
             btn.disabled = isLoading;
+            if (saveBtn) saveBtn.disabled = isLoading;
             btn.classList.toggle('opacity-80', isLoading);
             btn.classList.toggle('cursor-not-allowed', isLoading);
+            if (saveBtn) {
+                saveBtn.classList.toggle('opacity-50', isLoading);
+                saveBtn.classList.toggle('cursor-not-allowed', isLoading);
+            }
             spinner.classList.toggle('hidden', !isLoading);
             icon.classList.toggle('hidden', isLoading);
-            labelEl.textContent = label || (isLoading ? 'Menyimpan laporan...' : 'Laporkan');
+            labelEl.textContent = isLoading && action === 'share' ? 'Menyimpan laporan...' : 'Laporkan';
+            if (saveBtn) saveBtn.querySelector('span').textContent = isLoading && action === 'download' ? 'Menyimpan...' : 'Simpan';
         }
 
         function updateReportMath() {
@@ -545,38 +555,53 @@
             };
         }
 
-        function buildReportSubmissionContext() {
+        function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
-                const reportText = getReportText();
-                const clone = prepareScreenshotClone();
-                document.body.appendChild(clone);
-
-                html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true }).then(canvas => {
-                    const dataUrl = canvas.toDataURL('image/png');
-                    const base64 = dataUrl.split(',')[1];
-                    const filename = getScreenshotFilename();
-
-                    canvas.toBlob(blob => {
-                        if (document.body.contains(clone)) document.body.removeChild(clone);
-                        if (!blob) {
-                            reject(new Error('Gagal membuat file gambar laporan.'));
-                            return;
-                        }
-
-                        const file = new File([blob], filename, { type: 'image/png' });
-                        resolve({
-                            reportText: reportText,
-                            filename: filename,
-                            base64: base64,
-                            file: file,
-                            payload: buildReportPayload(reportText, filename, base64)
-                        });
-                    }, 'image/png');
-                }).catch(err => {
-                    if (document.body.contains(clone)) document.body.removeChild(clone);
-                    reject(err);
-                });
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+                reader.onerror = () => reject(new Error('Gagal membaca gambar laporan.'));
+                reader.readAsDataURL(blob);
             });
+        }
+
+        function buildReportSubmissionContext() {
+            const reportText = getReportText();
+            const filename = getScreenshotFilename();
+            const fallback = {
+                reportText: reportText,
+                filename: filename,
+                file: null,
+                payload: buildReportPayload(reportText, filename, '')
+            };
+            const clone = prepareScreenshotClone();
+            document.body.appendChild(clone);
+
+            const screenshotPromise = html2canvas(clone, {
+                scale: window.innerWidth <= 600 ? 1 : 1.5,
+                backgroundColor: '#ffffff',
+                logging: false,
+                useCORS: true
+            }).then(canvas => new Promise((resolve, reject) => {
+                canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Gagal membuat file gambar laporan.')), 'image/png');
+            })).then(blob => blobToBase64(blob).then(base64 => ({
+                reportText: reportText,
+                filename: filename,
+                file: new File([blob], filename, { type: 'image/png' }),
+                payload: buildReportPayload(reportText, filename, base64)
+            })));
+
+            const timeoutPromise = new Promise((resolve, reject) => {
+                setTimeout(() => reject(new Error('Pembuatan gambar terlalu lama.')), 10000);
+            });
+
+            return Promise.race([screenshotPromise, timeoutPromise])
+                .catch(err => {
+                    console.error('Screenshot tidak tersedia, laporan tetap dikirim.', err);
+                    return fallback;
+                })
+                .finally(() => {
+                    if (document.body.contains(clone)) document.body.removeChild(clone);
+                });
         }
 
         function submitReportToAppsScript(payload) {
@@ -630,10 +655,10 @@
 
         function shareReportContext(context, fromUserGesture) {
             if (navigator.clipboard) navigator.clipboard.writeText(context.reportText).catch(() => {});
-            const shareData = { files: [context.file], text: context.reportText, title: 'Laporan SKMK' };
+            const shareData = context.file ? { files: [context.file], text: context.reportText, title: 'Laporan SKMK' } : null;
             const textOnlyShareData = { text: context.reportText, title: 'Laporan SKMK' };
 
-            if (navigator.canShare && navigator.canShare(shareData)) {
+            if (shareData && navigator.canShare && navigator.canShare(shareData)) {
                 navigator.share(shareData)
                     .then(() => showToast('Laporan berhasil dibagikan!'))
                     .catch(e => {
@@ -659,6 +684,25 @@
             showToast('Browser menolak file gambar. Teks sudah disalin.');
         }
 
+        function downloadReportContext(context) {
+            if (!context.file) {
+                showToast('Data tersimpan, tetapi gambar gagal dibuat.');
+                return;
+            }
+            const link = document.createElement('a');
+            const objectUrl = URL.createObjectURL(context.file);
+            link.download = context.filename;
+            link.href = objectUrl;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            showToast('Data dan gambar berhasil disimpan!');
+        }
+
+        function runReportAction(context, action, fromUserGesture) {
+            if (action === 'download') downloadReportContext(context);
+            else shareReportContext(context, fromUserGesture);
+        }
+
         function openShareRetryModal(context) {
             openActionModal('Laporan Tersimpan', 'Ketuk tombol di bawah untuk membuka menu WhatsApp/share.', [
                 { label: 'Batal', variant: 'secondary' },
@@ -666,19 +710,21 @@
             ]);
         }
 
-        function openDuplicateModal(context, response) {
+        function openDuplicateModal(context, response, action) {
+            const actionLabel = action === 'download' ? 'Simpan Gambar Lagi' : 'Bagikan Lagi';
             openActionModal('Laporan Sudah Terekam', response.message || 'Laporan sudah terekam di database.', [
                 { label: 'Batal', variant: 'secondary' },
-                { label: 'Bagikan Lagi', variant: 'primary', callback: () => shareReportContext(context, true) }
+                { label: actionLabel, variant: 'primary', callback: () => runReportAction(context, action, true) }
             ]);
         }
 
-        function openSaveErrorModal(context, err) {
+        function openSaveErrorModal(context, err, action) {
             const message = err && err.message ? err.message : 'Laporan gagal disimpan ke Google Sheet.';
+            const continueLabel = action === 'download' ? 'Simpan gambar saja' : 'Bagikan tanpa menyimpan';
             openActionModal('Gagal Menyimpan', message, [
                 { label: 'Batal', variant: 'secondary' },
-                { label: 'Bagikan tanpa menyimpan', variant: 'secondary', callback: () => shareReportContext(context, true) },
-                { label: 'Coba Lagi', variant: 'primary', callback: () => handleReportAndSave() }
+                { label: continueLabel, variant: 'secondary', callback: () => runReportAction(context, action, true) },
+                { label: 'Coba Lagi', variant: 'primary', callback: () => handleReportAndSave(action) }
             ]);
         }
 
@@ -791,23 +837,13 @@
         }
 
         function captureScreenshot() {
-            showToast('Memproses gambar...');
-            const clone = prepareScreenshotClone();
-            document.body.appendChild(clone);
-            html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = getScreenshotFilename();
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                showToast('Gambar tersimpan di Galeri/Download!');
-                document.body.removeChild(clone);
-            }).catch(err => { console.error(err); showToast('Gagal menyimpan gambar'); if (document.body.contains(clone)) document.body.removeChild(clone); });
+            handleReportAndSave('download');
         }
 
-        function handleReportAndSave() {
+        function handleReportAndSave(action = 'share') {
             if (isSubmittingReport) return;
             let context = null;
-            setReportSubmitting(true, 'Menyimpan laporan...');
+            setReportSubmitting(true, action);
             showToast('Menyimpan laporan...');
 
             buildReportSubmissionContext()
@@ -820,13 +856,14 @@
                     if (!response || response.ok === false) throw new Error((response && response.message) || 'Laporan gagal disimpan.');
 
                     if (response.status === 'duplicate') {
-                        openDuplicateModal(context, response);
+                        openDuplicateModal(context, response, action);
                         return;
                     }
 
                     if (response.status === 'saved') {
-                        showToast('Laporan tersimpan. Membuka WhatsApp...');
-                        shareReportContext(context, false);
+                        if (action === 'download') showToast('Laporan tersimpan. Menyimpan gambar...');
+                        else showToast('Laporan tersimpan. Membuka WhatsApp...');
+                        runReportAction(context, action, false);
                         return;
                     }
 
@@ -835,7 +872,7 @@
                 .catch(err => {
                     console.error(err);
                     setReportSubmitting(false);
-                    if (context) openSaveErrorModal(context, err);
+                    if (context) openSaveErrorModal(context, err, action);
                     else showToast('Gagal memproses laporan.');
                 });
         }
