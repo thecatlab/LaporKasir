@@ -54,6 +54,16 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+function authorizeLaporKasir() {
+  var folder = DriveApp.getFolderById(DEFAULT_DRIVE_FOLDER_ID);
+  var spreadsheet = getOrCreateSpreadsheet_();
+
+  return {
+    folderName: folder.getName(),
+    spreadsheetUrl: spreadsheet.getUrl()
+  };
+}
+
 function doPost(e) {
   var payloadText = getPayloadText_(e);
   var requestId = extractRequestId_(payloadText);
@@ -326,7 +336,7 @@ function renderResponse_(requestId, response) {
     response: response
   };
   var json = JSON.stringify(envelope).replace(/</g, '\\u003c');
-  var html = '<!doctype html><html><body><script>parent.postMessage(' + json + ', "*");</script></body></html>';
+  var html = '<!doctype html><html><body><script>window.top.postMessage(' + json + ', "*");</script></body></html>';
 
   return HtmlService
     .createHtmlOutput(html)
